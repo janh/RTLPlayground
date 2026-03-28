@@ -179,26 +179,7 @@ void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 	if (len > 16)
 		return;
 
-	if (reg & 0x80) {	// Configure SFP readings address (0x51) as I2C device address
-		reg &= 0x7f;
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | (len - 1) & 0xf,  0x51 >> 5, (0x51 << 3) & 0xff);
-	} else {
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | (len - 1) & 0xf,  0x50 >> 5, (0x50 << 3) & 0xff);
-	}
-
-	reg_read_m(RTL837X_REG_I2C_CTRL);
-	sfr_mask_data(1, 0xfc, i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5 | i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2);
-	reg_write_m(RTL837X_REG_I2C_CTRL);
-
-	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
-
-	// Execute I2C Read
-	reg_bit_set(RTL837X_REG_I2C_CTRL, 0);
-
-	// Wait for execution to finish
-	do {
-		reg_read_m(RTL837X_REG_I2C_CTRL);
-	} while (sfr_data[3] & 0x1);
+	sfp_i2c_read(slot, reg, len);
 
 	for (uint8_t i = 0; i < len; i++) {
 		if (!(i & 0x3))

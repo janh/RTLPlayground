@@ -826,19 +826,25 @@ void sds_config(uint8_t sds, uint8_t mode)
 
 
 /*
- * Read a register of the EEPROM via I2C
+ * Read up to 16 bytes via I2C. Result needs to be fetched from I2C OUT register.
  */
-uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
+void sfp_i2c_read(uint8_t slot, uint8_t reg, uint8_t len)
 {
+	sfr_data[0] = 0;
+	sfr_data[1] = 0x1 << 4 /* mem_addr_width */ | (len - 1) & 0xf;
+	sfr_data[2] = i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5 |
+		i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2;
+	sfr_data[3] = 0;
+
 	if (reg & 0x80) {	// Configure SFP readings address (0x51) as I2C device address
 		reg &= 0x7f;
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | 0,  0x51 >> 5, (0x51 << 3) & 0xff);
+		sfr_data[2] |= 0x51 >> 5;
+		sfr_data[3] |= (0x51 << 3) & 0xff;
 	} else {
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | 0,  0x50 >> 5, (0x50 << 3) & 0xff);
+		sfr_data[2] |= 0x50 >> 5;
+		sfr_data[3] |= (0x50 << 3) & 0xff;
 	}
 
-	reg_read_m(RTL837X_REG_I2C_CTRL);
-	sfr_mask_data(1, 0xfc, i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5 | i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2);
 	reg_write_m(RTL837X_REG_I2C_CTRL);
 
 	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
@@ -850,6 +856,15 @@ uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 	do {
 		reg_read_m(RTL837X_REG_I2C_CTRL);
 	} while (sfr_data[3] & 0x1);
+}
+
+
+/*
+ * Read a register of the EEPROM via I2C
+ */
+uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
+{
+	sfp_i2c_read(slot, reg, 1);
 
 	reg_read_m(RTL837X_REG_I2C_OUT);
 	return sfr_data[3];
@@ -1827,10 +1842,6 @@ void setup_serial_timer1(void)
 void setup_i2c(void)
 {
 	REG_SET(RTL837X_REG_I2C_MST_IF_CTRL, 0);
-	// Configure SFP EEPROM address (0x50) as I2C device address
-	// Configure SFP readings address (0x51) as I2C device address
-	REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16),  0x50 >> 5, (0x50 << 3) & 0xff);
-
 	REG_SET(RTL837X_REG_I2C_CTRL2, 0);
 
 	// HW Control register, enable I2C depending on PIN configuration
