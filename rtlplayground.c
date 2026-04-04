@@ -737,7 +737,7 @@ void delay(uint16_t t)
 		PCON |= 1;
 }
 
-void early_boot_handle_button(void)
+/*void early_boot_handle_button(void)
 {
 	if (machine.reset_pin == GPIO_NA)
 		return;
@@ -794,7 +794,7 @@ void early_boot_handle_button(void)
 		flash_default_config();
 		delay(3UL * SYS_TICK_HZ);
 	}
-}
+}*/
 
 /*
  * Configure the SerDes of the SoC for a particular mode
@@ -2194,7 +2194,7 @@ void main(void)
 //	p031f.a610:2058 p041f.a610:2058  p051f.a610:2058  r4f3c:00000000 p061f.a610:2058 p071f.a610:2058 
 	port_stats_print();
 
-	early_boot_handle_button();
+	//early_boot_handle_button();
 
 	execute_config();
 	print_string("\n> ");
